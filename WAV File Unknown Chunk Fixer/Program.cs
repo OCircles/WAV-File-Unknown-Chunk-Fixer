@@ -21,7 +21,7 @@ namespace WAV_File_Unknown_Chunk_Fixer
             // CLI stuff
 
             Console.WriteLine("");
-            Console.WriteLine("WAVChunkFix v1.1 by O_Circles, 2021");
+            Console.WriteLine("WAVChunkFix v1.2 by O_Circles, 2021");
             Console.WriteLine("");
 
             good_chunks = new[] { "fmt ", "data" }.ToList();
@@ -48,6 +48,7 @@ namespace WAV_File_Unknown_Chunk_Fixer
 
             var wavFiles = Directory.GetFiles(wavPath, "*.wav");
 
+            Console.WriteLine("");
             Console.WriteLine("Searching for .wav files in " + wavPath + Environment.NewLine);
 
             foreach (var file in wavFiles)
@@ -65,9 +66,12 @@ namespace WAV_File_Unknown_Chunk_Fixer
                 "",
                 "OPTIONS:",
                 "",
-                "/path, /p [some directory path]\t\tSpecify what directory to use",
-                "/fact, /f\t\t\t\tKeep \"fact\" chunks for non-PCM",
-                "/help, /h, /?\t\t\t\tDisplay this text"
+                "-path, -p [some directory path]\t\tSpecify what directory to use",
+                "-fact, -f\t\t\t\tKeep \"fact\" chunks for non-PCM",
+                "-custom, -c [chunkID]\t\t\tSpecify other chunk IDs to preserve, delimit with \"|\"",
+                "-help, -h, -?\t\t\t\tDisplay this text",
+                "",
+                "Example: WAVChunkFix.exe -p \"C:\\WavFolder\\\" -f -c bext -c junk"
             };
 
             foreach (var s in help)
@@ -90,15 +94,23 @@ namespace WAV_File_Unknown_Chunk_Fixer
 
                     if (!string.IsNullOrEmpty(realArg))
                     {
-                        switch (realArg)
+                        var lowerArg = realArg.ToLower();
+
+                        switch (lowerArg)
                         {
                             case "path":
                             case "p":
-                                wavPath = args[index+1];
+                                if (index+1 < args.Length)
+                                    wavPath = args[index+1];
                                 break;
                             case "fact":
                             case "f":
-                                good_chunks.Add("fact");
+                                AddGoodChunk("fact");
+                                break;
+                            case "custom":
+                            case "c":
+                                if (index + 1 < args.Length)
+                                    AddGoodChunk(args[index + 1]);
                                 break;
                             case "help":
                             case "?":
@@ -112,7 +124,15 @@ namespace WAV_File_Unknown_Chunk_Fixer
             }
         }
 
+        static void AddGoodChunk(string id)
+        {
+            if (id.Length > 4) id = id.Substring(0, 4);
 
+            var padded = id.PadRight(4, ' ');
+
+            good_chunks.Add(padded);
+            Console.WriteLine("Added \"" + padded + "\" to whitelisted chunk IDs");
+        }
 
 
         static void FixWav(string path)
