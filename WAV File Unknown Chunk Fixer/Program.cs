@@ -11,11 +11,40 @@ namespace WAV_File_Unknown_Chunk_Fixer
     {
 
         static string wavPath;
-        static bool verbose;
+        static bool showHelp;
+
+        static List<string> good_chunks;
 
         static void Main(string[] args)
         {
-            if (wavPath == null) wavPath = Directory.GetCurrentDirectory();
+
+            // CLI stuff
+
+            Console.WriteLine("");
+            Console.WriteLine("WAVChunkFix v1.1 by O_Circles, 2021");
+            Console.WriteLine("");
+
+            good_chunks = new[] { "fmt ", "data" }.ToList();
+
+            ParseParams(args);
+
+            if (!string.IsNullOrEmpty(wavPath) && !Directory.Exists(wavPath))
+            {
+                Console.WriteLine("The path \"" + wavPath + "\" does not exist. Exiting application.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(wavPath))
+                wavPath = Directory.GetCurrentDirectory();
+
+            if (showHelp)
+            {
+                ShowHelp();
+                return;
+            }
+
+
+            // Actual *do stuff here*
 
             var wavFiles = Directory.GetFiles(wavPath, "*.wav");
 
@@ -24,9 +53,67 @@ namespace WAV_File_Unknown_Chunk_Fixer
             foreach (var file in wavFiles)
                 FixWav(file);
 
+            Console.WriteLine("");
+        }
+
+        static void ShowHelp()
+        {
+            string[] help = new[]
+            {
+                "Do note that argument prefixes like /, -, -- are all interchangable",
+                "Meaning that /path will work just as well as --path",
+                "",
+                "OPTIONS:",
+                "",
+                "/path, /p [some directory path]\t\tSpecify what directory to use",
+                "/fact, /f\t\t\t\tKeep \"fact\" chunks for non-PCM",
+                "/help, /h, /?\t\t\t\tDisplay this text"
+            };
+
+            foreach (var s in help)
+                Console.WriteLine(s);
 
             Console.WriteLine("");
         }
+
+        static void ParseParams(string[] args)
+        {
+            int index = 0;
+
+            foreach (var arg in args)
+            {
+                if (arg[0] == '/' || arg[0] == '-')
+                {
+                    string realArg = "";
+                    realArg = arg.TrimStart('-');
+                    realArg = realArg.TrimStart('/');
+
+                    if (!string.IsNullOrEmpty(realArg))
+                    {
+                        switch (realArg)
+                        {
+                            case "path":
+                            case "p":
+                                wavPath = args[index+1];
+                                break;
+                            case "fact":
+                            case "f":
+                                good_chunks.Add("fact");
+                                break;
+                            case "help":
+                            case "?":
+                            case "h":
+                                showHelp = true;
+                                return;
+                        }
+                    }
+                }
+                index++;
+            }
+        }
+
+
+
 
         static void FixWav(string path)
         {
@@ -39,7 +126,7 @@ namespace WAV_File_Unknown_Chunk_Fixer
             int badChunks = 0;
 
             foreach (var v in wave.Chunks)
-                if (v.Name != "fmt " && v.Name != "data")
+                if (!good_chunks.Contains(v.Name))
                     badChunks++;
 
             if (badChunks == 0)
@@ -63,7 +150,7 @@ namespace WAV_File_Unknown_Chunk_Fixer
 
                     foreach (var v in wave.Chunks)
                     {
-                        if (v.Name == "fmt " || v.Name == "data")
+                        if (!good_chunks.Contains(v.Name))
                         {
                             actual_size += 8; //ID and Size header
                             actual_size += v.Length;
